@@ -22,7 +22,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18.x' # Ensure this matches your desired Node.js version
+          node-version: '18.x' # Node.js v18
 
       - name: Install Dependencies
         run: npm install
@@ -35,6 +35,7 @@ jobs:
 
       - name: Prepare Deployment Artifact
         run: tar -czf backend.tar.gz -C build .
+        # Archive only the 'build' directory
 
       - name: Deploy to DigitalOcean
         uses: appleboy/ssh-action@v0.1.4
@@ -47,17 +48,14 @@ jobs:
             # Navigate to the deployment directory
             cd /var/www/portfolio/portfolio-back
 
-            # Pull the latest changes
-            git pull origin main
+            # (Optional) Clean existing build
+            rm -rf *
 
             # Extract the backend artifact
             tar -xzf backend.tar.gz
 
             # Install production dependencies
             npm install --production
-
-            # Build the backend (if necessary)
-            npm run build
 
             # Restart the backend service using PM2
             pm2 restart adonis-app || pm2 start server.js --name adonis-app
