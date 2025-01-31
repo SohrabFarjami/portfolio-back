@@ -18,23 +18,23 @@ jobs:
 
       - name: List Repository Contents
         run: ls -la
-        # Helps verify that the backend code is at the root
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18.x' # Ensure this matches your backend's Node.js version
+          node-version: '18.x' # Ensure this matches your desired Node.js version
 
       - name: Install Dependencies
         run: npm install
+
+      - name: Clean Build Directory
+        run: rm -rf build
 
       - name: Build Backend
         run: npm run build
 
       - name: Prepare Deployment Artifact
-        run: |
-          tar -czf backend.tar.gz .
-          # Packages the entire repository
+        run: tar -czf backend.tar.gz -C build .
 
       - name: Deploy to DigitalOcean
         uses: appleboy/ssh-action@v0.1.4
@@ -45,7 +45,7 @@ jobs:
           port: ${{ secrets.DO_SSH_PORT || '22' }}
           script: |
             # Navigate to the deployment directory
-            cd /path/to/your/backend/app
+            cd /var/www/portfolio/portfolio-back
 
             # Pull the latest changes
             git pull origin main
