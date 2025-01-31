@@ -1,4 +1,4 @@
-name: Deploy to DigitalOcean
+name: Deploy Backend to DigitalOcean
 
 on:
   push:
@@ -16,10 +16,10 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Set up Node.js for Backend
+      - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '16' # Specify your Node.js version
+          node-version: '16' # Ensure this matches your backend's Node.js version
 
       - name: Install Backend Dependencies
         working-directory: ./backend
@@ -29,23 +29,9 @@ jobs:
         working-directory: ./backend
         run: npm run build
 
-      - name: Set up Node.js for Frontend
-        uses: actions/setup-node@v3
-        with:
-          node-version: '16' # Specify your Node.js version
-
-      - name: Install Frontend Dependencies
-        working-directory: ./frontend
-        run: npm install
-
-      - name: Build Frontend
-        working-directory: ./frontend
-        run: npm run build
-
-      - name: Prepare Deployment Artifacts
+      - name: Prepare Deployment Artifact
         run: |
           tar -czf backend.tar.gz -C ./backend .
-          tar -czf frontend.tar.gz -C ./frontend .
 
       - name: Deploy to DigitalOcean
         uses: appleboy/ssh-action@v0.1.4
@@ -61,23 +47,20 @@ jobs:
             # Pull the latest changes
             git pull origin main
 
-            # Extract the backend
+            # Extract the backend artifact
             tar -xzf backend.tar.gz
-            # Install backend dependencies
+
+            # Navigate to the backend directory
             cd backend
+
+            # Install production dependencies
             npm install --production
-            # Restart the backend service
-            pm2 restart adonis-app
 
-            # Go back and extract the frontend
-            cd ..
-            tar -xzf frontend.tar.gz
-            # Optionally, build frontend if needed or move static files
-            # Example: If using Nginx to serve React build
-            cp -r frontend/build /path/to/your/app/frontend/build
+            # Build the backend (if necessary)
+            npm run build
 
-            # Reload Nginx to serve updated frontend
-            sudo systemctl reload nginx
+            # Restart the backend service using PM2
+            pm2 restart adonis-app || pm2 start server.js --name adonis-app
 
-            # Clean up
-            rm backend.tar.gz frontend.tar.gz
+            # Clean up the artifact
+            rm ../backend.tar.gz
