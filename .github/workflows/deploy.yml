@@ -1,0 +1,83 @@
+name: Deploy to DigitalOcean
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js for Backend
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16' # Specify your Node.js version
+
+      - name: Install Backend Dependencies
+        working-directory: ./backend
+        run: npm install
+
+      - name: Build Backend
+        working-directory: ./backend
+        run: npm run build
+
+      - name: Set up Node.js for Frontend
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16' # Specify your Node.js version
+
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm install
+
+      - name: Build Frontend
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: Prepare Deployment Artifacts
+        run: |
+          tar -czf backend.tar.gz -C ./backend .
+          tar -czf frontend.tar.gz -C ./frontend .
+
+      - name: Deploy to DigitalOcean
+        uses: appleboy/ssh-action@v0.1.4
+        with:
+          host: ${{ secrets.DO_SSH_HOST }}
+          username: ${{ secrets.DO_SSH_USERNAME }}
+          key: ${{ secrets.DO_SSH_KEY }}
+          port: ${{ secrets.DO_SSH_PORT || '22' }}
+          script: |
+            # Navigate to the deployment directory
+            cd /var/www/portfolio/portfolio-back
+
+            # Pull the latest changes
+            git pull origin main
+
+            # Extract the backend
+            tar -xzf backend.tar.gz
+            # Install backend dependencies
+            cd backend
+            npm install --production
+            # Restart the backend service
+            pm2 restart adonis-app
+
+            # Go back and extract the frontend
+            cd ..
+            tar -xzf frontend.tar.gz
+            # Optionally, build frontend if needed or move static files
+            # Example: If using Nginx to serve React build
+            cp -r frontend/build /path/to/your/app/frontend/build
+
+            # Reload Nginx to serve updated frontend
+            sudo systemctl reload nginx
+
+            # Clean up
+            rm backend.tar.gz frontend.tar.gz
